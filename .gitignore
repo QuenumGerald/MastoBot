@@ -136,3 +136,5 @@ dist
 .pnp.*
 recent_replies.json
 account.json
+tasks.db
+blazerjob.db
