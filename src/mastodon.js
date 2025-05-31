@@ -1,11 +1,15 @@
 // Fonctions Mastodon : récupération timeline et réponse
 const Mastodon = require('mastodon-api');
-const { generateReply } = require('./gemini');
+const { generateReply, generatePost } = require('./gemini');
 const { canReplyTo, setLastReply } = require('./recentReplies');
 
+// Utilise OAuth2 :
+// - MASTODON_BASE_URL : ex https://mastodon.social
+// - MASTODON_ACCESS_TOKEN : token généré via le flow OAuth2
+// Pour générer ce token, voir la documentation OAuth2 de Mastodon.
 const M = new Mastodon({
-  access_token: process.env.MASTODON_TOKEN,
-  api_url: process.env.MASTODON_API_URL
+  access_token: process.env.MASTODON_ACCESS_TOKEN,
+  api_url: `https://mastodon.social/api/v1/`
 });
 
 async function fetchHomeTimeline() {
@@ -28,4 +32,48 @@ async function replyToStatus(status) {
   console.log(`[Mastodon] Répondu à ${account}`);
 }
 
-module.exports = { fetchHomeTimeline, replyToStatus };
+async function postStatus(contextInfo = '') {
+  const post = await generatePost(contextInfo);
+  await M.post('statuses', {
+    status: post
+  });
+  console.log('[Mastodon] Post publié:', post);
+}
+
+async function followAccount(accountId) {
+  try {
+    const resp = await M.post(`accounts/${accountId}/follow`);
+    console.log(`[Mastodon] Suivi de l'utilisateur ${accountId} effectué.`);
+    return resp.data;
+  } catch (err) {
+    console.error(`[Mastodon] Erreur lors du suivi de ${accountId}:`, err);
+    throw err;
+  }
+}
+
+async function searchAndFollow(keyword, limit = 10) {
+  try {
+    // Recherche de statuts publics contenant le mot-clé
+    const resp = await M.get('search', { q: keyword, type: 'statuses', resolve: true, limit: 10 });
+    const statuses = resp.data.statuses || [];
+    const userIds = new Set();
+    for (const status of statuses) {
+      if (status.account && status.account.id) {
+        userIds.add(status.account.id);
+      }
+    }
+    let count = 0;
+    for (const id of userIds) {
+      if (count >= limit) break;
+      await followAccount(id);
+      count++;
+    }
+    console.log(`[Mastodon] Recherche et follow terminé pour le mot-clé : ${keyword} (limit ${limit})`);
+  } catch (err) {
+    console.error(`[Mastodon] Erreur dans searchAndFollow(${keyword}):`, err);
+    throw err;
+  }
+}
+
+module.exports = { fetchHomeTimeline, replyToStatus, postStatus, followAccount, searchAndFollow };
+

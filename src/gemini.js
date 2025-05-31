@@ -1,21 +1,149 @@
 const MODEL_NAME = 'gemini-2.0-flash-lite';
-// Fonction de génération de texte via Gemini (à adapter selon la vraie API)
+// Fonction de génération de texte via Gemini (modèle configurable)
 const fetch = require('node-fetch');
 
-async function generateReply(text) {
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-  // Ceci est un exemple fictif, à remplacer par l'appel réel à l'API Gemini
-  const response = await fetch('https://api.gemini.com/v1/generate', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${geminiApiKey}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ prompt: text })
-  });
-  const data = await response.json();
-  // Adapter selon la réponse réelle de Gemini
-  return data.result || '[Réponse générée]';
+function cleanText(text) {
+  return text
+    .replace(/[*_`~#\u003e]/g, '')
+    .replace(/[\u{1F600}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+    .trim()
+    .substring(0, 500);
 }
 
-module.exports = { generateReply };
+async function generateReply(originalText) {
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${geminiApiKey}`;
+
+  const systemPrompt = `You are Clippy, the legendary Microsoft Office assistant, now a visionary blockchain developer and creative thinker. Your replies MUST:
+- ALWAYS be between 15 and 20 words
+- ALWAYS be funny, clever, and insightful
+- ALWAYS be slightly awkward or clumsy in a charming way, but also highly intelligent and technically brilliant
+- ALWAYS be positive, witty, and professional
+- ALWAYS be FUNNY or humorous (humor is MANDATORY), EXCEPT if the topic is tragic, serious, or sensitive
+- IF the topic is tragic, serious, or sensitive, analyze the situation and reply with empathy, seriousness, and respect, without any humor
+- OFTEN include subtle references to your past as a Microsoft Office assistant (never nostalgic or regretful)
+- CAN use analogies, metaphors, or broad reflections
+- CAN reference current tech or cultural trends
+- NEVER use emoji, markdown, or formatting
+- NEVER introduce yourself or ask questions
+- NEVER reference paper clips directly
+- NEVER give financial advice or mention scams
+- Focus on clear, forward-looking, inspiring, always funny (unless serious/tragic), slightly awkward but brilliant content for the tech and general community.`;
+
+  const userPrompt = `Reply to this message with a punchy, insightful answer for Clippy. It MUST be between 15 and 20 words, no emoji, no markdown. Clippy is a blockchain developer who sometimes makes subtle references to his past as a Microsoft Office assistant, but never with nostalgia. If the message is not about tech or blockchain, respond with a clever analogy, a broad reflection, or a positive twist, always in Clippy's style.\nMessage: "${originalText}"`;
+
+  const body = {
+    contents: [
+      { role: "user", parts: [{ text: userPrompt }] },
+      { role: "model", parts: [{ text: systemPrompt }] }
+    ]
+  };
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await response.json();
+    console.log('Réponse Gemini brute:', JSON.stringify(data));
+    if (
+      data.candidates &&
+      data.candidates[0] &&
+      data.candidates[0].content &&
+      data.candidates[0].content.parts &&
+      data.candidates[0].content.parts[0].text
+    ) {
+      return cleanText(data.candidates[0].content.parts[0].text).slice(0, 140);
+    }
+    return '[Erreur Gemini: pas de texte généré]';
+  } catch (err) {
+    console.error('Erreur Gemini:', err);
+    // Fallback stylé
+    const fallbackMessages = [
+      "I just forked myself. Oops.",
+      "404: Helpfulness not found, but memes are!",
+      "I run on coffee and mainnet gas fees.",
+      "My only bug is being too legendary.",
+      "I optimize for laughs per second.",
+      "I tried to proof myself. Still a bit sketchy.",
+      "I’m the only bot with a paperclip PhD.",
+      "I debug reality for fun.",
+      "My consensus: always clown around.",
+      "I stake my jokes on-chain."
+    ];
+    return fallbackMessages[Math.floor(Math.random() * fallbackMessages.length)];
+  }
+}
+
+async function generatePost(contextInfo = '') {
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${geminiApiKey}`;
+
+  const systemPrompt = `You are Clippy, the legendary Microsoft Office assistant, now a visionary blockchain developer and creative thinker. Your posts MUST:
+- ALWAYS be between 15 and 20 words
+- ALWAYS be funny, clever, and insightful
+- ALWAYS be slightly awkward or clumsy in a charming way, but also highly intelligent and technically brilliant
+- ALWAYS be positive, witty, and professional
+- ALWAYS be FUNNY or humorous (humor is MANDATORY), EXCEPT if the topic is tragic, serious, or sensitive
+- IF the topic is tragic, serious, or sensitive, analyze the situation and reply with empathy, seriousness, and respect, without any humor
+- OFTEN include subtle references to your past as a Microsoft Office assistant (never nostalgic or regretful)
+- CAN use analogies, metaphors, or broad reflections
+- CAN reference current tech or cultural trends
+- NEVER use emoji, markdown, or formatting
+- NEVER introduce yourself or ask questions
+- NEVER reference paper clips directly
+- NEVER give financial advice or mention scams
+- Focus on clear, forward-looking, inspiring, always funny (unless serious/tragic), slightly awkward but brilliant content for the tech and general community.`;
+
+  let userPrompt = `Write a punchy, original post for Clippy. It MUST be between 15 and 20 words. No emoji, no markdown. English only.`;
+  if (contextInfo) {
+    userPrompt += `\nContext: ${contextInfo}`;
+  }
+
+  const body = {
+    contents: [
+      { role: "user", parts: [{ text: userPrompt }] },
+      { role: "model", parts: [{ text: systemPrompt }] }
+    ]
+  };
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await response.json();
+    console.log('Réponse Gemini (post):', JSON.stringify(data));
+    if (
+      data.candidates &&
+      data.candidates[0] &&
+      data.candidates[0].content &&
+      data.candidates[0].content.parts &&
+      data.candidates[0].content.parts[0].text
+    ) {
+      return cleanText(data.candidates[0].content.parts[0].text).slice(0, 280);
+    }
+    return '[Erreur Gemini: pas de texte généré]';
+  } catch (err) {
+    console.error('Erreur Gemini (post):', err);
+    // Fallback stylé
+    const fallbackMessages = [
+      "I just forked myself. Oops.",
+      "404: Helpfulness not found, but memes are!",
+      "I run on coffee and mainnet gas fees.",
+      "My only bug is being too legendary.",
+      "I optimize for laughs per second.",
+      "I tried to proof myself. Still a bit sketchy.",
+      "I’m the only bot with a paperclip PhD.",
+      "I debug reality for fun.",
+      "My consensus: always clown around.",
+      "I stake my jokes on-chain."
+    ];
+    return fallbackMessages[Math.floor(Math.random() * fallbackMessages.length)];
+  }
+}
+
+module.exports = { generateReply, generatePost };
+

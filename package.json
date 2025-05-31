@@ -8,8 +8,8 @@
   },
   "dependencies": {
     "blazerjob": "^1.0.2",
+    "dotenv": "^16.5.0",
     "mastodon-api": "^1.3.0",
-    "node-fetch": "^2.6.7",
-    "dotenv": "^16.0.3"
+    "node-fetch": "^2.7.0"
   }
 }
