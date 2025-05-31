@@ -40,10 +40,10 @@ async function postStatus(contextInfo = '') {
   console.log('[Mastodon] Post publié:', post);
 }
 
-async function followAccount(accountId) {
+async function followAccount(accountId, username = null) {
   try {
     const resp = await M.post(`accounts/${accountId}/follow`);
-    console.log(`[Mastodon] Suivi de l'utilisateur ${accountId} effectué.`);
+    console.log(`[Mastodon] Suivi de l'utilisateur ${accountId}${username ? ' (@' + username + ')' : ''} effectué. Réponse API :`, JSON.stringify(resp.data));
     return resp.data;
   } catch (err) {
     console.error(`[Mastodon] Erreur lors du suivi de ${accountId}:`, err);
@@ -56,19 +56,27 @@ async function searchAndFollow(keyword, limit = 10) {
     // Recherche de statuts publics contenant le mot-clé
     const resp = await M.get('search', { q: keyword, type: 'statuses', resolve: true, limit: 10 });
     const statuses = resp.data.statuses || [];
-    const userIds = new Set();
+    if (statuses.length === 0) {
+      console.log(`[Mastodon] Aucun utilisateur trouvé pour le mot-clé : ${keyword}`);
+      return;
+    }
+    const userMap = new Map();
     for (const status of statuses) {
       if (status.account && status.account.id) {
-        userIds.add(status.account.id);
+        userMap.set(status.account.id, status.account.acct || null);
       }
     }
     let count = 0;
-    for (const id of userIds) {
+    for (const [id, username] of userMap.entries()) {
       if (count >= limit) break;
-      await followAccount(id);
+      await followAccount(id, username);
       count++;
     }
-    console.log(`[Mastodon] Recherche et follow terminé pour le mot-clé : ${keyword} (limit ${limit})`);
+    if (count === 0) {
+      console.log(`[Mastodon] Aucun follow effectué pour le mot-clé : ${keyword}`);
+    } else {
+      console.log(`[Mastodon] Recherche et follow terminé pour le mot-clé : ${keyword} (limit ${limit})`);
+    }
   } catch (err) {
     console.error(`[Mastodon] Erreur dans searchAndFollow(${keyword}):`, err);
     throw err;

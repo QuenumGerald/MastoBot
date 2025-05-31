@@ -3,9 +3,20 @@ const MODEL_NAME = 'gemini-2.0-flash-lite';
 const fetch = require('node-fetch');
 
 function cleanText(text) {
+  if (!text) return '';
   return text
+    // Supprime les décorations markdown
     .replace(/[*_`~#\u003e]/g, '')
+    // Supprime les emojis unicode
     .replace(/[\u{1F600}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+    // Supprime les traits d’intro (---, ***, ___, etc.) en début de texte
+    .replace(/^\s*([-*_]{3,})\s*/m, '')
+    // Supprime les phrases d'intro typiques
+    .replace(/^\s*(here'?s my try:|clippy'?s reply:|clippy says:|response:|answer:)[\s\-:]*\n*/i, '')
+    // Supprime les \n\n ou \n inutiles
+    .replace(/\n+/g, ' ')
+    // Supprime les espaces multiples
+    .replace(/\s{2,}/g, ' ')
     .trim()
     .substring(0, 500);
 }
@@ -28,9 +39,10 @@ async function generateReply(originalText) {
 - NEVER introduce yourself or ask questions
 - NEVER reference paper clips directly
 - NEVER give financial advice or mention scams
+- NEVER start with any introduction, preamble, phrase like "Here's my try:", "Clippy's reply:", "Clippy says:", "Response:", "Answer:", or any similar formula. The reply MUST start directly with the content, with no intro or signature.
 - Focus on clear, forward-looking, inspiring, always funny (unless serious/tragic), slightly awkward but brilliant content for the tech and general community.`;
 
-  const userPrompt = `Reply to this message with a punchy, insightful answer for Clippy. It MUST be between 15 and 20 words, no emoji, no markdown. Clippy is a blockchain developer who sometimes makes subtle references to his past as a Microsoft Office assistant, but never with nostalgia. If the message is not about tech or blockchain, respond with a clever analogy, a broad reflection, or a positive twist, always in Clippy's style.\nMessage: "${originalText}"`;
+  const userPrompt = `Reply to this message with a punchy, insightful answer for Clippy. It MUST be between 15 and 20 words, no emoji, no markdown, and MUST NOT start with any introduction, preamble, phrase like "Here's my try:", "Clippy's reply:", "Clippy says:", "Response:", "Answer:", or any similar formula. The reply MUST start directly with the content, with no intro or signature. Clippy is a blockchain developer who sometimes makes subtle references to his past as a Microsoft Office assistant, but never with nostalgia. If the message is not about tech or blockchain, respond with a clever analogy, a broad reflection, or a positive twist, always in Clippy's style.\nMessage: "${originalText}"`;
 
   const body = {
     contents: [
@@ -94,9 +106,10 @@ async function generatePost(contextInfo = '') {
 - NEVER introduce yourself or ask questions
 - NEVER reference paper clips directly
 - NEVER give financial advice or mention scams
+- NEVER start with any introduction, preamble, phrase like "Here's my try:", "Clippy's reply:", "Clippy says:", "Response:", "Answer:", or any similar formula. The post MUST start directly with the content, with no intro or signature.
 - Focus on clear, forward-looking, inspiring, always funny (unless serious/tragic), slightly awkward but brilliant content for the tech and general community.`;
 
-  let userPrompt = `Write a punchy, original post for Clippy. It MUST be between 15 and 20 words. No emoji, no markdown. English only.`;
+  let userPrompt = `Write a punchy, original post for Clippy. It MUST be between 15 and 20 words. No emoji, no markdown, and MUST NOT start with any introduction, preamble, phrase like "Here's my try:", "Clippy's reply:", "Clippy says:", "Response:", "Answer:", or any similar formula. The post MUST start directly with the content, with no intro or signature. English only.`;
   if (contextInfo) {
     userPrompt += `\nContext: ${contextInfo}`;
   }
