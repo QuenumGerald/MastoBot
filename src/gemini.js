@@ -11,8 +11,8 @@ function cleanText(text) {
     .replace(/[\u{1F600}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
     // Supprime les traits d’intro (---, ***, ___, etc.) en début de texte
     .replace(/^\s*([-*_]{3,})\s*/m, '')
-    // Supprime les phrases d'intro typiques
-    .replace(/^\s*(here'?s my try:|clippy'?s reply:|clippy says:|response:|answer:)[\s\-:]*\n*/i, '')
+    // Supprime les phrases d'intro typiques et variantes IA
+    .replace(/^\s*(here'?s my try:|clippy'?s reply:|clippy says:|response:|answer:|your answer:|your reply:|ai answer:|ai reply:)[\s\-:]*\n*/i, '')
     // Supprime les \n\n ou \n inutiles
     .replace(/\n+/g, ' ')
     // Supprime les espaces multiples
@@ -22,6 +22,10 @@ function cleanText(text) {
 }
 
 async function generateReply(originalText) {
+  if (!originalText || !originalText.trim()) {
+    console.error('[Gemini] Message vide transmis à generateReply, aucune requête envoyée à Gemini.');
+    return '[Erreur Gemini: message vide, aucune réponse générée]';
+  }
   const geminiApiKey = process.env.GEMINI_API_KEY;
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${geminiApiKey}`;
 
@@ -46,8 +50,8 @@ async function generateReply(originalText) {
 
   const body = {
     contents: [
-      { role: "user", parts: [{ text: userPrompt }] },
-      { role: "model", parts: [{ text: systemPrompt }] }
+      { role: "system", parts: [{ text: systemPrompt }] },
+      { role: "user", parts: [{ text: userPrompt }] }
     ]
   };
 
@@ -116,8 +120,8 @@ async function generatePost(contextInfo = '') {
 
   const body = {
     contents: [
-      { role: "user", parts: [{ text: userPrompt }] },
-      { role: "model", parts: [{ text: systemPrompt }] }
+      { role: "system", parts: [{ text: systemPrompt }] },
+      { role: "user", parts: [{ text: userPrompt }] }
     ]
   };
 
