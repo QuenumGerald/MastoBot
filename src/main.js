@@ -16,13 +16,19 @@ jobs.schedule(async () => {
   }
   // On ne répond qu'à une seule personne à chaque exécution (pour répartir sur la journée)
   if (statuses.length > 0) {
-    const status = statuses[replyCursor % statuses.length];
-    replyCursor++;
-    await replyToStatus(status);
+    // Répond à jusqu'à 3 statuts par cycle, sans dépasser la limite
+    const maxReplies = 3;
+    let replies = 0;
+    for (let i = 0; i < statuses.length && replies < maxReplies; i++) {
+      const status = statuses[(replyCursor + i) % statuses.length];
+      await replyToStatus(status);
+      replies++;
+    }
+    replyCursor += replies;
   }
 }, {
   runAt: new Date(),
-  interval: 28 * 60 * 1000 + 48 * 1000 // toutes les 28min48s
+  interval: 14 * 60 * 1000 + 24 * 1000 // toutes les 14min24s (2x plus rapide)
 });
 
 // Tâche périodique pour publier 5 posts par jour (toutes les ~4h48min)
@@ -30,7 +36,7 @@ jobs.schedule(async () => {
   await postStatus();
 }, {
   runAt: new Date(Date.now() + 60000), // commence dans 1 min
-  interval: 4 * 60 * 60 * 1000 + 48 * 60 * 1000 // toutes les 4h48min
+  interval: 2 * 60 * 60 * 1000 + 24 * 60 * 1000 // toutes les 2h24min (2x plus rapide)
 });
 
 // --- Tâche follow automatique répartie sur la journée ---
@@ -72,7 +78,7 @@ jobs.schedule(async () => {
   }
 }, {
   runAt: new Date(Date.now() + 120000), // commence dans 2 min
-  interval: 24 * 60 * 1000 // toutes les 24 minutes (30 fois en 12h)
+  interval: 12 * 60 * 1000 // toutes les 12 minutes (2x plus rapide)
 });
 
 jobs.start();

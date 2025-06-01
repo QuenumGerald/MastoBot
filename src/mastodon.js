@@ -13,7 +13,7 @@ const M = new Mastodon({
 });
 
 async function fetchHomeTimeline() {
-  const resp = await M.get('timelines/home', { limit: 5 });
+  const resp = await M.get('timelines/home', { limit: 30 }); // élargi pour traiter plus de statuts
   return resp.data;
 }
 
